@@ -27,7 +27,7 @@ if __name__ == "__main__":
 
         logging.info("Initiate the data ingestion process")
 
-        data_ingestion_artifact = data_ingestion.initate_data_ingestion()
+        data_ingestion_artifact = data_ingestion.initiate_data_ingestion()
 
         logging.info("Data Ingestion process completed")
         print(data_ingestion_artifact)
