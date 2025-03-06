@@ -17,7 +17,7 @@ from networksecurity.pipeline.training_pipeline import TrainingPipeline
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, File, UploadFile, Request
 from uvicorn import run as app_run
-from fastapi.responses import Response
+from fastapi.responses import Response, JSONResponse
 from starlette.responses import RedirectResponse
 import pandas as pd
 
@@ -57,7 +57,7 @@ async def train_route():
     try:
         training_pipeline = TrainingPipeline()
         training_pipeline.run_pipeline()
-        return Response(content={"message": "Training is successful."}, media_type="application/json")
+        return JSONResponse(content={"message": "Training is successful."})
     except Exception as e:
         raise NetworkSecurityException(e, sys)
     
@@ -65,8 +65,8 @@ async def train_route():
 async def predict_route(request: Request, file: UploadFile = File(...)):
     try:
         df = pd.read_csv(file.file)
-        preprocessor = load_object("final_models/preprocessor.pkl")
-        final_model = load_object("final_models/model.pkl")
+        preprocessor = load_object("final_model/preprocessor.pkl")
+        final_model = load_object("final_model/model.pkl")
 
         network_model = NetworkModel(preprocessor=preprocessor, model=final_model)
 
