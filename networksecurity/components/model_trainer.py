@@ -1,5 +1,7 @@
 import os
 import sys
+from dotenv import load_dotenv
+load_dotenv()
 
 from networksecurity.exception.exception import NetworkSecurityException
 from networksecurity.logging.logger import logging
@@ -23,7 +25,12 @@ from xgboost import XGBClassifier
 
 import mlflow
 import dagshub
-dagshub.init(repo_owner='4ashutosh98', repo_name='end-to-end-ml-project-mlflow-aws', mlflow=True)
+dagshub.init(
+    repo_owner='4ashutosh98',
+    repo_name='end-to-end-ml-project-mlflow-aws',
+    mlflow=True,
+    token=os.getenv("DAGSHUB_TOKEN")
+)
 
 
 class ModelTrainer:
