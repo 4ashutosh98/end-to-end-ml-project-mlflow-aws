@@ -14,4 +14,4 @@ uvicorn
 python-multipart
 awscli
 
-##-e .
+-e .
