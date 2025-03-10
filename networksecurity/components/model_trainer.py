@@ -25,12 +25,23 @@ from xgboost import XGBClassifier
 
 import mlflow
 import dagshub
-dagshub.init(
-    repo_owner='4ashutosh98',
-    repo_name='end-to-end-ml-project-mlflow-aws',
-    mlflow=True,
-    token=os.getenv("DAGSHUB_TOKEN")
-)
+from urllib.parse import urlparse
+from mlflow.models import infer_signature
+
+# Set DagsHub credentials as environment variables
+os.environ["MLFLOW_TRACKING_URI"] = "https://dagshub.com/4ashutosh98/end-to-end-ml-project-mlflow-aws.mlflow"
+os.environ["MLFLOW_TRACKING_USERNAME"] = "4ashutosh98"
+os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("DAGSHUB_TOKEN", "")
+
+# Initialize dagshub without token parameter
+try:
+    dagshub.init(
+        repo_owner='4ashutosh98',
+        repo_name='end-to-end-ml-project-mlflow-aws',
+        mlflow=True
+    )
+except Exception as e:
+    logging.warning(f"DagsHub initialization error: {e}. Continuing without DagsHub.")
 
 
 class ModelTrainer:
@@ -45,7 +56,7 @@ class ModelTrainer:
         except Exception as e:
             raise NetworkSecurityException(e, sys) from e
         
-    def track_mlflow(self, best_model, classification_metric: ClassificationMetricArtifact):
+    def track_mlflow(self, best_model, X_train, classification_metric: ClassificationMetricArtifact):
         with mlflow.start_run():
             f1_score = classification_metric.f1_score
             recall_score = classification_metric.recall_score
@@ -55,7 +66,23 @@ class ModelTrainer:
             mlflow.log_metric("precision_score", precision_score)
             mlflow.log_metric("recall_score", recall_score)
 
-            mlflow.sklearn.log_model(best_model, "model")
+            # Generate model signature for proper schema tracking
+            predictions = best_model.predict(X_train)
+            signature = infer_signature(X_train, predictions)
+
+            # Check if we're using a tracking server that supports Model Registry
+            tracking_url_type_store = urlparse(mlflow.get_tracking_uri()).scheme
+            
+            # Log the model with proper registration if not using file store
+            if tracking_url_type_store != "file":
+                mlflow.sklearn.log_model(
+                    best_model, 
+                    "model", 
+                    registered_model_name="NetworkSecurityModel",
+                    signature=signature
+                )
+            else:
+                mlflow.sklearn.log_model(best_model, "model", signature=signature)
 
 
 
@@ -133,13 +160,13 @@ class ModelTrainer:
         classification_train_metric = get_classification_score(y_train, y_train_pred)
 
         ## Track the model training using MLFLOW
-        self.track_mlflow(best_model, classification_train_metric)
+        self.track_mlflow(best_model, X_train, classification_train_metric)
 
         y_test_pred = best_model.predict(X_test)
         classification_test_metric = get_classification_score(y_test, y_test_pred)
 
         ## Track the model testing using MLFLOW
-        self.track_mlflow(best_model, classification_test_metric)
+        self.track_mlflow(best_model, X_train, classification_test_metric)
 
         preprocessor = load_object(file_path=self.data_transformation_artifact.transformed_object_file_path)    
         model_dir_path = os.path.dirname(self.model_trainer_config.model_trained_file_path)
